@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { RefreshCw } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'schedule_data';
 const NAMES = ['БЕЛИК', 'МО', 'НАТО'];
@@ -307,7 +306,7 @@ export function App() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-1.5 sm:p-4">
       {/* Pure text title "Сало-7" on background above the container without box or contour */}
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-amber-300 uppercase tracking-widest text-center mb-4 sm:mb-6 drop-shadow-md">
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-amber-300 uppercase tracking-widest text-center mb-8 sm:mb-12 md:mb-16 drop-shadow-md">
         Сало-7
       </h1>
 
@@ -340,24 +339,14 @@ export function App() {
             </h2>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => fetchSchedule(true)}
-              className="p-1.5 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 border border-[#44553b] transition-all"
-              title="Оновити вручную"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-            <button
-              type="button"
-              onClick={() => changeMonth(1)}
-              className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
-              title="Наступний місяць"
-            >
-              →
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => changeMonth(1)}
+            className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
+            title="Наступний місяць"
+          >
+            →
+          </button>
         </header>
 
         <div className="calendar-grid text-[11px] sm:text-sm text-center font-bold text-amber-400/90 tracking-wide uppercase mb-1.5">
