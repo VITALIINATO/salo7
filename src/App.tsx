@@ -145,15 +145,19 @@ export function App() {
         body: JSON.stringify({ dateKey, person }),
       });
       if (!res.ok) {
-        // Direct npoint fallback
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (err) {
+      console.warn('Backend save failed, using direct npoint fallback:', err);
+      try {
         await fetch('https://api.npoint.io/a2c459559145e6cd5082', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newSchedule),
         });
+      } catch (fallbackErr) {
+        console.error('Direct npoint save error:', fallbackErr);
       }
-    } catch (err) {
-      console.error('Save error:', err);
     } finally {
       setIsSaving(false);
     }
