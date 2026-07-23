@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'schedule_data';
@@ -14,10 +14,34 @@ export function App() {
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [error] = useState<string | null>(null);
 
+  // Track recent local edits so background 3s polling doesn't overwrite pending selections before Cloudflare CDN invalidates
+  const pendingEditsRef = useRef<Record<string, { person: string; timestamp: number }>>({});
+
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
+  }, []);
+
+  // Merge pending edits over fetched remote schedule
+  const mergeScheduleWithPending = useCallback((remoteSchedule: Record<string, string>) => {
+    const now = Date.now();
+    const merged = { ...remoteSchedule };
+    
+    Object.entries(pendingEditsRef.current).forEach(([key, edit]) => {
+      // Keep optimistic edit for 12 seconds to prevent CDN cache race conditions
+      if (now - edit.timestamp < 12000) {
+        if (edit.person) {
+          merged[key] = edit.person;
+        } else {
+          delete merged[key];
+        }
+      } else {
+        delete pendingEditsRef.current[key];
+      }
+    });
+
+    return merged;
   }, []);
 
   // Fetch function with direct cache-busting to ensure cross-device synchronization
@@ -33,9 +57,10 @@ export function App() {
         if (contentType && contentType.includes('application/json')) {
           const data = await res.json();
           if (data && data.schedule) {
-            setSchedule(data.schedule);
+            const merged = mergeScheduleWithPending(data.schedule);
+            setSchedule(merged);
             setLastUpdated(data.lastUpdated || new Date().toISOString());
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.schedule));
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
             success = true;
           }
         }
@@ -52,9 +77,10 @@ export function App() {
         if (res.ok) {
           const data = await res.json();
           if (data && typeof data === 'object') {
-            setSchedule(data);
+            const merged = mergeScheduleWithPending(data);
+            setSchedule(merged);
             setLastUpdated(new Date().toISOString());
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
             success = true;
           }
         }
@@ -68,7 +94,8 @@ export function App() {
       const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (cached) {
         try {
-          setSchedule(JSON.parse(cached));
+          const parsed = JSON.parse(cached);
+          setSchedule(mergeScheduleWithPending(parsed));
         } catch (e) {
           console.error('Failed to parse cached schedule:', e);
         }
@@ -76,7 +103,7 @@ export function App() {
     }
 
     setIsLoading(false);
-  }, []);
+  }, [mergeScheduleWithPending]);
 
   // Set up SSE for real-time synchronization + polling fallback
   useEffect(() => {
@@ -95,8 +122,9 @@ export function App() {
         try {
           const data = JSON.parse(event.data);
           if (data.schedule) {
-            setSchedule(data.schedule);
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.schedule));
+            const merged = mergeScheduleWithPending(data.schedule);
+            setSchedule(merged);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
           }
           if (data.lastUpdated) {
             setLastUpdated(data.lastUpdated);
@@ -137,10 +165,17 @@ export function App() {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [fetchSchedule]);
+  }, [fetchSchedule, mergeScheduleWithPending]);
 
   const saveData = async (dateKey: string, person: string) => {
     setIsSaving(true);
+
+    // Register pending optimistic edit
+    pendingEditsRef.current[dateKey] = {
+      person,
+      timestamp: Date.now(),
+    };
+
     // Optimistic local state update
     const newSchedule = { ...schedule };
     if (person) {
@@ -226,15 +261,15 @@ export function App() {
     return result;
   }, [currentDate, today]);
 
-  // Format last update time neatly
+  // Format last update time neatly in Ukrainian
   const formattedLastUpdated = useMemo(() => {
-    if (!lastUpdated) return 'Загрузка...';
+    if (!lastUpdated) return 'Завантаження...';
     try {
       const date = new Date(lastUpdated);
-      if (isNaN(date.getTime())) return 'Неизвестно';
+      if (isNaN(date.getTime())) return 'Невідомо';
 
       // Time string like 14:25:30
-      const timeStr = date.toLocaleTimeString('ru-RU', {
+      const timeStr = date.toLocaleTimeString('uk-UA', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -249,14 +284,14 @@ export function App() {
       ) {
         return timeStr;
       } else {
-        const dateStr = date.toLocaleDateString('ru-RU', {
+        const dateStr = date.toLocaleDateString('uk-UA', {
           day: 'numeric',
           month: 'short',
         });
         return `${dateStr}, ${timeStr}`;
       }
     } catch (e) {
-      return 'Неизвестно';
+      return 'Невідомо';
     }
   }, [lastUpdated]);
 
@@ -264,34 +299,34 @@ export function App() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="loader" />
-        <div className="mt-4 text-lg font-bold text-amber-400 drop-shadow">Загрузка...</div>
+        <div className="mt-4 text-lg font-bold text-amber-400 drop-shadow">Завантаження...</div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-1.5 sm:p-4">
-      <div className="w-full max-w-4xl bg-[#20291d]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-[#3b4934] p-2.5 sm:p-6 relative text-stone-100">
-        {/* Main Title Header: МВГ Сало-7 */}
-        <div className="flex items-center justify-between mb-3 sm:mb-4 bg-[#141b12]/90 border border-[#36452f] rounded-xl py-2 px-3 sm:px-4 shadow-inner">
+      <div className="w-full max-w-4xl bg-[#20291d]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-[#3b4934] p-3 sm:p-6 relative text-stone-100">
+        {/* Main Title Header: Сало-7 */}
+        <div className="flex items-center justify-between bg-[#141b12]/90 border border-[#36452f] rounded-xl py-2.5 px-3 sm:px-5 shadow-inner mb-10 sm:mb-16">
           <div className="flex items-center gap-2">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
                 isLiveConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
               }`}
-              title={isLiveConnected ? 'Синхронизация активна' : 'Авто-обновление'}
+              title={isLiveConnected ? 'Синхронізація активна' : 'Авто-оновлення'}
             />
           </div>
 
-          <h1 className="text-base sm:text-lg md:text-xl font-black text-amber-300 uppercase tracking-widest text-center">
-            МВГ Сало-7
+          <h1 className="text-lg sm:text-xl md:text-2xl font-black text-amber-300 uppercase tracking-widest text-center">
+            Сало-7
           </h1>
 
           <button
             type="button"
             onClick={() => fetchSchedule(true)}
             className="p-1.5 text-amber-400 hover:text-amber-200 hover:bg-[#2e3b28] rounded-lg transition-colors"
-            title="Обновить вручную"
+            title="Оновити вручну"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -312,7 +347,7 @@ export function App() {
             ←
           </button>
           <h2 className="text-base sm:text-xl font-extrabold text-amber-300 uppercase tracking-wider">
-            {currentDate.toLocaleString('ru-RU', { month: 'long' })} {currentDate.getFullYear()}
+            {currentDate.toLocaleString('uk-UA', { month: 'long' })} {currentDate.getFullYear()}
           </h2>
           <button
             type="button"
@@ -324,7 +359,7 @@ export function App() {
         </header>
 
         <div className="calendar-grid text-[11px] sm:text-sm text-center font-bold text-amber-400/90 tracking-wide uppercase mb-1.5">
-          {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d) => (
+          {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map((d) => (
             <div key={d}>{d}</div>
           ))}
         </div>
@@ -365,10 +400,10 @@ export function App() {
                   {current && person && (
                     <div className="mt-0.5">
                       {(isPast || isToday) && (
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-400 rounded-full" title="Прошедшая/текущая дата" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-400 rounded-full" title="Минула/поточна дата" />
                       )}
                       {!isPast && !isToday && (
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full" title="Будущая дата" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full" title="Майбутня дата" />
                       )}
                     </div>
                   )}
@@ -402,7 +437,7 @@ export function App() {
         {isSaving && (
           <div className="absolute bottom-4 right-4 text-xs text-amber-300 font-bold animate-pulse bg-[#161f14] px-3 py-1 rounded-full shadow-lg border border-[#3c4c35] flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />
-            Сохранение...
+            Збереження...
           </div>
         )}
       </div>
@@ -411,3 +446,4 @@ export function App() {
 }
 
 export default App;
+
