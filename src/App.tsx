@@ -304,14 +304,16 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-1.5 sm:p-4">
-      <div className="w-full max-w-4xl flex flex-col items-center">
-        {/* Pure text title "Сало-7" on background above the calendar */}
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-amber-300 uppercase tracking-widest text-center mb-3 sm:mb-5 drop-shadow-md">
+    <div className="min-h-screen flex flex-col items-center max-w-4xl mx-auto p-1.5 sm:p-4">
+      {/* Upper area: "Сало-7" is centered vertically between the top of the page and top of calendar */}
+      <div className="flex-1 min-h-[60px] flex items-center justify-center py-2">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-amber-300 uppercase tracking-widest text-center drop-shadow-md">
           Сало-7
         </h1>
+      </div>
 
-        <div className="w-full bg-[#20291d]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-[#3b4934] p-3 sm:p-6 relative text-stone-100">
+      {/* Main calendar card centered vertically on the page */}
+      <div className="w-full bg-[#20291d]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-[#3b4934] p-3 sm:p-6 relative text-stone-100">
         {error && (
           <div className="mb-4 p-3 bg-red-950/80 border border-red-800 rounded-lg text-red-200 text-sm">
             {error}
@@ -433,9 +435,11 @@ export function App() {
           </div>
         )}
       </div>
+
+      {/* Bottom spacer balancing top area to center calendar vertically */}
+      <div className="flex-1 min-h-[16px]" />
     </div>
-  </div>
-);
+  );
 }
 
 export default App;
