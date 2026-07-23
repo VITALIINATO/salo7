@@ -249,16 +249,16 @@ export function App() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="loader" />
-        <div className="mt-4 text-lg font-semibold text-indigo-600">Загрузка...</div>
+        <div className="mt-4 text-lg font-semibold text-white drop-shadow">Загрузка...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-2 sm:p-4">
-      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl p-4 sm:p-6 relative">
+    <div className="flex flex-col items-center justify-center min-h-screen p-1.5 sm:p-4">
+      <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-2.5 sm:p-6 relative">
         {/* Top middle banner: "Обновлено: <время>" as requested */}
-        <div className="flex items-center justify-center gap-2 mb-4 bg-indigo-50/70 border border-indigo-100 rounded-xl py-2 px-4 text-xs sm:text-sm text-indigo-900 font-medium w-fit mx-auto">
+        <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4 bg-indigo-50/80 border border-indigo-100 rounded-xl py-1.5 px-3 sm:py-2 sm:px-4 text-xs sm:text-sm text-indigo-900 font-medium w-fit mx-auto shadow-sm">
           <span className="flex items-center gap-1.5">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
@@ -273,7 +273,7 @@ export function App() {
           <button
             type="button"
             onClick={() => fetchSchedule(true)}
-            className="ml-1.5 p-1 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-100/60 rounded-full transition-colors"
+            className="ml-1 p-1 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-100/60 rounded-full transition-colors"
             title="Обновить вручную"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -286,27 +286,27 @@ export function App() {
           </div>
         )}
 
-        <header className="flex items-center justify-between mb-4">
+        <header className="flex items-center justify-between mb-3 sm:mb-4 px-1">
           <button
             type="button"
             onClick={() => changeMonth(-1)}
-            className="p-2 rounded-full hover:bg-indigo-50 text-indigo-800 font-bold transition-colors"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-indigo-50 text-indigo-800 font-bold transition-colors"
           >
             ←
           </button>
-          <h2 className="text-lg sm:text-xl font-bold text-indigo-800 capitalize">
+          <h2 className="text-base sm:text-xl font-bold text-indigo-900 capitalize">
             {currentDate.toLocaleString('ru-RU', { month: 'long' })} {currentDate.getFullYear()}
           </h2>
           <button
             type="button"
             onClick={() => changeMonth(1)}
-            className="p-2 rounded-full hover:bg-indigo-50 text-indigo-800 font-bold transition-colors"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-indigo-50 text-indigo-800 font-bold transition-colors"
           >
             →
           </button>
         </header>
 
-        <div className="calendar-grid text-xs sm:text-sm text-center font-bold text-indigo-900 mb-2">
+        <div className="calendar-grid text-[11px] sm:text-sm text-center font-bold text-indigo-900 mb-1.5">
           {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d) => (
             <div key={d}>{d}</div>
           ))}
@@ -324,49 +324,53 @@ export function App() {
             return (
               <div
                 key={key}
-                className={`aspect-square flex flex-col justify-start items-center p-1 sm:p-2 border rounded-lg transition-all ${
+                className={`min-h-[62px] sm:min-h-[76px] sm:aspect-square flex flex-col justify-between items-center p-0.5 sm:p-1.5 border rounded-lg transition-all ${
                   current
                     ? person
-                      ? 'bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200'
-                      : 'bg-white border-slate-200 hover:bg-indigo-50'
-                    : 'bg-slate-100/70 text-slate-400 border-transparent'
+                      ? 'bg-gradient-to-br from-violet-50 to-purple-100/60 border-violet-300 shadow-xs'
+                      : 'bg-white border-slate-200 hover:bg-indigo-50/60'
+                    : 'bg-slate-100/60 text-slate-400 border-transparent'
                 }`}
               >
-                <time
-                  className={`w-7 h-7 flex items-center justify-center rounded-full text-sm sm:text-base ${
-                    current ? 'text-indigo-800' : 'text-slate-400'
-                  } ${
-                    isToday
-                      ? ' bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold shadow-md'
-                      : ''
-                  }`}
-                >
-                  {date.getDate()}
-                </time>
+                <div className="flex flex-col items-center">
+                  <time
+                    className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-base font-medium ${
+                      current ? 'text-indigo-950' : 'text-slate-400'
+                    } ${
+                      isToday
+                        ? ' bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold shadow-xs'
+                        : ''
+                    }`}
+                  >
+                    {date.getDate()}
+                  </time>
 
-                {current && person && (
-                  <>
-                    {(isPast || isToday) && (
-                      <div className="my-0.5 w-2 h-2 bg-emerald-500 rounded-full" title="Прошедшая/текущая дата" />
-                    )}
-                    {!isPast && !isToday && (
-                      <div className="my-0.5 w-2 h-2 bg-amber-500 rounded-full" title="Будущая дата" />
-                    )}
-                  </>
-                )}
+                  {current && person && (
+                    <div className="mt-0.5">
+                      {(isPast || isToday) && (
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-500 rounded-full" title="Прошедшая/текущая дата" />
+                      )}
+                      {!isPast && !isToday && (
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-500 rounded-full" title="Будущая дата" />
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {current && (
-                  <div className="w-full mt-auto">
+                  <div className="w-full mt-auto text-center px-0">
                     <select
                       value={person || ''}
                       onChange={(e) => handleSelect(date, e.target.value)}
-                      className={`w-full mt-0.5 text-xs sm:text-sm bg-transparent focus:outline-none text-center cursor-pointer overflow-hidden whitespace-nowrap py-1 ${
-                        person ? 'text-purple-700 font-semibold' : 'text-slate-600'
+                      className={`w-full text-[11px] leading-tight sm:text-sm bg-transparent focus:outline-none text-center cursor-pointer font-semibold py-0.5 px-0 ${
+                        person ? 'text-purple-800' : 'text-slate-400 font-normal'
                       }`}
                     >
-                      <option value="" />
+                      <option value="" className="text-slate-400">
+                        —
+                      </option>
                       {NAMES.map((name) => (
-                        <option key={name} value={name}>
+                        <option key={name} value={name} className="text-indigo-950 font-medium">
                           {name}
                         </option>
                       ))}
