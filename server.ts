@@ -33,7 +33,7 @@ function broadcastUpdate() {
 // Initial fetch from npoint.io
 async function syncFromNpoint() {
   try {
-    const res = await fetch(SCHEDULE_API_URL);
+    const res = await fetch(`${SCHEDULE_API_URL}?_t=${Date.now()}`);
     if (res.ok) {
       const remoteData = await res.json();
       if (remoteData && typeof remoteData === 'object') {

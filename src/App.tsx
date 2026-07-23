@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'schedule_data';
 const NAMES = ['БЕЛИК', 'МО', 'НАТО'];
+const NPOINT_URL = 'https://api.npoint.io/a2c459559145e6cd5082';
 
 export function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -19,53 +20,69 @@ export function App() {
     return d;
   }, []);
 
-  // Fetch function with direct fallback to npoint if server unreachable
+  // Fetch function with direct cache-busting to ensure cross-device synchronization
   const fetchSchedule = useCallback(async (isManual = false) => {
     if (isManual) setIsLoading(true);
+    let success = false;
+
+    // 1. Try local Express API if available (e.g. running fullstack container)
     try {
-      // Primary local server endpoint
-      const res = await fetch('/api/schedule');
+      const res = await fetch('/api/schedule', { cache: 'no-store' });
       if (res.ok) {
-        const data = await res.json();
-        if (data.schedule) {
-          setSchedule(data.schedule);
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.schedule));
-        }
-        if (data.lastUpdated) {
-          setLastUpdated(data.lastUpdated);
-        }
-      } else {
-        throw new Error(`HTTP ${res.status}`);
-      }
-    } catch (err) {
-      console.warn('Server fetch error, trying direct npoint fallback:', err);
-      try {
-        const res = await fetch('https://api.npoint.io/a2c459559145e6cd5082');
-        if (res.ok) {
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
           const data = await res.json();
-          setSchedule(data || {});
-          setLastUpdated(new Date().toISOString());
-        }
-      } catch (fallbackErr) {
-        const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (cached) {
-          try {
-            setSchedule(JSON.parse(cached));
-          } catch (e) {
-            console.error('Failed to parse cached schedule:', e);
+          if (data && data.schedule) {
+            setSchedule(data.schedule);
+            setLastUpdated(data.lastUpdated || new Date().toISOString());
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.schedule));
+            success = true;
           }
         }
       }
-    } finally {
-      setIsLoading(false);
+    } catch {
+      // Ignore static host 404
     }
+
+    // 2. Direct cloud fetch with timestamp parameter to bypass Cloudflare CDN cache
+    if (!success) {
+      try {
+        const cacheBusterUrl = `${NPOINT_URL}?_t=${Date.now()}`;
+        const res = await fetch(cacheBusterUrl, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data === 'object') {
+            setSchedule(data);
+            setLastUpdated(new Date().toISOString());
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+            success = true;
+          }
+        }
+      } catch (err) {
+        console.warn('Cloud sync error:', err);
+      }
+    }
+
+    // 3. LocalStorage fallback if offline
+    if (!success) {
+      const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (cached) {
+        try {
+          setSchedule(JSON.parse(cached));
+        } catch (e) {
+          console.error('Failed to parse cached schedule:', e);
+        }
+      }
+    }
+
+    setIsLoading(false);
   }, []);
 
   // Set up SSE for real-time synchronization + polling fallback
   useEffect(() => {
     fetchSchedule();
 
-    // 1. SSE for immediate real-time sync
+    // 1. SSE for immediate real-time sync when on fullstack server
     let eventSource: EventSource | null = null;
     try {
       eventSource = new EventSource('/api/schedule/stream');
@@ -93,11 +110,10 @@ export function App() {
         setIsLiveConnected(false);
       };
     } catch (e) {
-      console.warn('SSE not supported or connection failed:', e);
       setIsLiveConnected(false);
     }
 
-    // 2. Interval polling every 3 seconds as robust cross-device fallback
+    // 2. Interval polling every 3 seconds for instant cross-device updates
     const intervalId = setInterval(() => {
       fetchSchedule();
     }, 3000);
@@ -125,7 +141,7 @@ export function App() {
 
   const saveData = async (dateKey: string, person: string) => {
     setIsSaving(true);
-    // Optimistic state update
+    // Optimistic local state update
     const newSchedule = { ...schedule };
     if (person) {
       newSchedule[dateKey] = person;
@@ -138,26 +154,25 @@ export function App() {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newSchedule));
 
     try {
-      // Save through backend API
-      const res = await fetch('/api/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dateKey, person }),
-      });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-    } catch (err) {
-      console.warn('Backend save failed, using direct npoint fallback:', err);
+      // Try local Express server API if running on fullstack host
       try {
-        await fetch('https://api.npoint.io/a2c459559145e6cd5082', {
+        await fetch('/api/schedule', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newSchedule),
+          body: JSON.stringify({ dateKey, person }),
         });
-      } catch (fallbackErr) {
-        console.error('Direct npoint save error:', fallbackErr);
+      } catch {
+        // Ignore static host
       }
+
+      // Always update global npoint store so all devices (phones, computers) sync instantly
+      await fetch(NPOINT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSchedule),
+      });
+    } catch (err) {
+      console.error('Save error:', err);
     } finally {
       setIsSaving(false);
     }
@@ -249,31 +264,31 @@ export function App() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="loader" />
-        <div className="mt-4 text-lg font-semibold text-white drop-shadow">Загрузка...</div>
+        <div className="mt-4 text-lg font-bold text-amber-400 drop-shadow">Загрузка...</div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-1.5 sm:p-4">
-      <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-2.5 sm:p-6 relative">
-        {/* Top middle banner: "Обновлено: <время>" as requested */}
-        <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4 bg-indigo-50/80 border border-indigo-100 rounded-xl py-1.5 px-3 sm:py-2 sm:px-4 text-xs sm:text-sm text-indigo-900 font-medium w-fit mx-auto shadow-sm">
+      <div className="w-full max-w-4xl bg-[#20291d]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-[#3b4934] p-2.5 sm:p-6 relative text-stone-100">
+        {/* Top middle banner: "Обновлено: <время>" */}
+        <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4 bg-[#141b12]/90 border border-[#36452f] rounded-xl py-1.5 px-3 sm:py-2 sm:px-4 text-xs sm:text-sm text-amber-300/90 font-medium w-fit mx-auto shadow-inner">
           <span className="flex items-center gap-1.5">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
-                isLiveConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                isLiveConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
               }`}
-              title={isLiveConnected ? 'Синхронизация в реальном времени' : 'Периодическое обновление'}
+              title={isLiveConnected ? 'Синхронизация в реальном времени' : 'Авто-обновление подключено'}
             />
             <span>Обновлено:</span>
-            <strong className="font-semibold text-indigo-950">{formattedLastUpdated}</strong>
+            <strong className="font-semibold text-amber-300">{formattedLastUpdated}</strong>
           </span>
 
           <button
             type="button"
             onClick={() => fetchSchedule(true)}
-            className="ml-1 p-1 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-100/60 rounded-full transition-colors"
+            className="ml-1 p-1 text-amber-400 hover:text-amber-200 hover:bg-[#2e3b28] rounded-full transition-colors"
             title="Обновить вручную"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -281,7 +296,7 @@ export function App() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="mb-4 p-3 bg-red-950/80 border border-red-800 rounded-lg text-red-200 text-sm">
             {error}
           </div>
         )}
@@ -290,23 +305,23 @@ export function App() {
           <button
             type="button"
             onClick={() => changeMonth(-1)}
-            className="p-1.5 sm:p-2 rounded-full hover:bg-indigo-50 text-indigo-800 font-bold transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
           >
             ←
           </button>
-          <h2 className="text-base sm:text-xl font-bold text-indigo-900 capitalize">
+          <h2 className="text-base sm:text-xl font-extrabold text-amber-300 uppercase tracking-wider">
             {currentDate.toLocaleString('ru-RU', { month: 'long' })} {currentDate.getFullYear()}
           </h2>
           <button
             type="button"
             onClick={() => changeMonth(1)}
-            className="p-1.5 sm:p-2 rounded-full hover:bg-indigo-50 text-indigo-800 font-bold transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
           >
             →
           </button>
         </header>
 
-        <div className="calendar-grid text-[11px] sm:text-sm text-center font-bold text-indigo-900 mb-1.5">
+        <div className="calendar-grid text-[11px] sm:text-sm text-center font-bold text-amber-400/90 tracking-wide uppercase mb-1.5">
           {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d) => (
             <div key={d}>{d}</div>
           ))}
@@ -324,21 +339,21 @@ export function App() {
             return (
               <div
                 key={key}
-                className={`min-h-[62px] sm:min-h-[76px] sm:aspect-square flex flex-col justify-between items-center p-0.5 sm:p-1.5 border rounded-lg transition-all ${
+                className={`min-h-[60px] sm:min-h-[76px] sm:aspect-square flex flex-col justify-between items-center p-0.5 sm:p-1.5 border rounded-lg transition-all ${
                   current
                     ? person
-                      ? 'bg-gradient-to-br from-violet-50 to-purple-100/60 border-violet-300 shadow-xs'
-                      : 'bg-white border-slate-200 hover:bg-indigo-50/60'
-                    : 'bg-slate-100/60 text-slate-400 border-transparent'
+                      ? 'bg-gradient-to-b from-[#3a4732] to-[#2b3525] border-[#55674a] shadow-xs text-amber-200'
+                      : 'bg-[#1b2218]/90 border-[#2f3c29] hover:bg-[#253120]'
+                    : 'bg-[#121810]/40 text-stone-600 border-transparent'
                 }`}
               >
                 <div className="flex flex-col items-center">
                   <time
                     className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-base font-medium ${
-                      current ? 'text-indigo-950' : 'text-slate-400'
+                      current ? 'text-stone-200' : 'text-stone-600'
                     } ${
                       isToday
-                        ? ' bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold shadow-xs'
+                        ? ' bg-amber-500 text-stone-950 font-black border border-amber-300 shadow-md'
                         : ''
                     }`}
                   >
@@ -348,29 +363,29 @@ export function App() {
                   {current && person && (
                     <div className="mt-0.5">
                       {(isPast || isToday) && (
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-500 rounded-full" title="Прошедшая/текущая дата" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-400 rounded-full" title="Прошедшая/текущая дата" />
                       )}
                       {!isPast && !isToday && (
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-500 rounded-full" title="Будущая дата" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full" title="Будущая дата" />
                       )}
                     </div>
                   )}
                 </div>
 
                 {current && (
-                  <div className="w-full mt-auto text-center px-0">
+                  <div className="w-full mt-auto text-center px-0 overflow-hidden">
                     <select
                       value={person || ''}
                       onChange={(e) => handleSelect(date, e.target.value)}
-                      className={`w-full text-[11px] leading-tight sm:text-sm bg-transparent focus:outline-none text-center cursor-pointer font-semibold py-0.5 px-0 ${
-                        person ? 'text-purple-800' : 'text-slate-400 font-normal'
+                      className={`w-full text-[10px] xs:text-[11px] sm:text-xs md:text-sm leading-tight bg-transparent focus:outline-none text-center cursor-pointer font-black tracking-tight py-0.5 px-0 ${
+                        person ? 'text-amber-300' : 'text-stone-500 font-normal'
                       }`}
                     >
-                      <option value="" className="text-slate-400">
+                      <option value="" className="bg-[#182015] text-stone-500 font-normal">
                         —
                       </option>
                       {NAMES.map((name) => (
-                        <option key={name} value={name} className="text-indigo-950 font-medium">
+                        <option key={name} value={name} className="bg-[#182015] text-amber-300 font-bold">
                           {name}
                         </option>
                       ))}
@@ -383,8 +398,8 @@ export function App() {
         </div>
 
         {isSaving && (
-          <div className="absolute bottom-4 right-4 text-xs text-violet-600 font-medium animate-pulse bg-white px-3 py-1 rounded-full shadow-md border border-violet-100 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-violet-600 rounded-full animate-ping" />
+          <div className="absolute bottom-4 right-4 text-xs text-amber-300 font-bold animate-pulse bg-[#161f14] px-3 py-1 rounded-full shadow-lg border border-[#3c4c35] flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />
             Сохранение...
           </div>
         )}
