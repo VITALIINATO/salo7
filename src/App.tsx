@@ -272,26 +272,28 @@ export function App() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-1.5 sm:p-4">
       <div className="w-full max-w-4xl bg-[#20291d]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-[#3b4934] p-2.5 sm:p-6 relative text-stone-100">
-        {/* Top middle banner: "Обновлено: <время>" */}
-        <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4 bg-[#141b12]/90 border border-[#36452f] rounded-xl py-1.5 px-3 sm:py-2 sm:px-4 text-xs sm:text-sm text-amber-300/90 font-medium w-fit mx-auto shadow-inner">
-          <span className="flex items-center gap-1.5">
+        {/* Main Title Header: МВГ Сало-7 */}
+        <div className="flex items-center justify-between mb-3 sm:mb-4 bg-[#141b12]/90 border border-[#36452f] rounded-xl py-2 px-3 sm:px-4 shadow-inner">
+          <div className="flex items-center gap-2">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
                 isLiveConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
               }`}
-              title={isLiveConnected ? 'Синхронизация в реальном времени' : 'Авто-обновление подключено'}
+              title={isLiveConnected ? 'Синхронизация активна' : 'Авто-обновление'}
             />
-            <span>Обновлено:</span>
-            <strong className="font-semibold text-amber-300">{formattedLastUpdated}</strong>
-          </span>
+          </div>
+
+          <h1 className="text-base sm:text-lg md:text-xl font-black text-amber-300 uppercase tracking-widest text-center">
+            МВГ Сало-7
+          </h1>
 
           <button
             type="button"
             onClick={() => fetchSchedule(true)}
-            className="ml-1 p-1 text-amber-400 hover:text-amber-200 hover:bg-[#2e3b28] rounded-full transition-colors"
+            className="p-1.5 text-amber-400 hover:text-amber-200 hover:bg-[#2e3b28] rounded-lg transition-colors"
             title="Обновить вручную"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
