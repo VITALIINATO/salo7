@@ -6,14 +6,34 @@ const NPOINT_URL = 'https://api.npoint.io/a2c459559145e6cd5082';
 
 export function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [schedule, setSchedule] = useState<Record<string, string>>({});
+  const [schedule, setSchedule] = useState<Record<string, string>>(() => {
+    try {
+      const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+      return !cached;
+    } catch {
+      return true;
+    }
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [error] = useState<string | null>(null);
 
-  // Track recent local edits so background 3s polling doesn't overwrite pending selections before Cloudflare CDN invalidates
+  // Keep a ref of schedule so callbacks always see freshest state
+  const scheduleRef = useRef<Record<string, string>>(schedule);
+  useEffect(() => {
+    scheduleRef.current = schedule;
+  }, [schedule]);
+
+  // Track recent local edits so background 3s polling doesn't overwrite pending selections
   const pendingEditsRef = useRef<Record<string, { person: string; timestamp: number }>>({});
 
   const today = useMemo(() => {
@@ -28,8 +48,8 @@ export function App() {
     const merged = { ...remoteSchedule };
     
     Object.entries(pendingEditsRef.current).forEach(([key, edit]) => {
-      // Keep optimistic edit for 12 seconds to prevent CDN cache race conditions
-      if (now - edit.timestamp < 12000) {
+      // Keep optimistic edit active for 30s to prevent stale server/CDN responses from overwriting local choices
+      if (now - edit.timestamp < 30000) {
         if (edit.person) {
           merged[key] = edit.person;
         } else {
@@ -48,7 +68,7 @@ export function App() {
     if (isManual) setIsLoading(true);
     let success = false;
 
-    // 1. Try local Express API if available (e.g. running fullstack container)
+    // 1. Try local Express API if available
     try {
       const res = await fetch('/api/schedule', { cache: 'no-store' });
       if (res.ok) {
@@ -85,19 +105,6 @@ export function App() {
         }
       } catch (err) {
         console.warn('Cloud sync error:', err);
-      }
-    }
-
-    // 3. LocalStorage fallback if offline
-    if (!success) {
-      const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          setSchedule(mergeScheduleWithPending(parsed));
-        } catch (e) {
-          console.error('Failed to parse cached schedule:', e);
-        }
       }
     }
 
@@ -140,7 +147,7 @@ export function App() {
       setIsLiveConnected(false);
     }
 
-    // 2. Interval polling every 3 seconds for instant cross-device updates
+    // 2. Interval polling every 3 seconds for cross-device updates
     const intervalId = setInterval(() => {
       fetchSchedule();
     }, 3000);
@@ -166,51 +173,59 @@ export function App() {
     };
   }, [fetchSchedule, mergeScheduleWithPending]);
 
-  const saveData = async (dateKey: string, person: string) => {
-    setIsSaving(true);
-
-    // Register pending optimistic edit
+  const saveData = useCallback(async (dateKey: string, person: string) => {
+    // Register pending optimistic edit timestamp
     pendingEditsRef.current[dateKey] = {
       person,
       timestamp: Date.now(),
     };
 
-    // Optimistic local state update
-    const newSchedule = { ...schedule };
+    // Calculate updated schedule from current fresh ref
+    const current = scheduleRef.current;
+    const newSchedule = { ...current };
     if (person) {
       newSchedule[dateKey] = person;
     } else {
       delete newSchedule[dateKey];
     }
+
+    // Instant local UI & storage update (0ms delay)
+    scheduleRef.current = newSchedule;
     setSchedule(newSchedule);
     const nowIso = new Date().toISOString();
     setLastUpdated(nowIso);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newSchedule));
-
     try {
-      // Try local Express server API if running on fullstack host
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newSchedule));
+    } catch (e) {
+      console.error('LocalStorage error:', e);
+    }
+
+    // Background cloud persistence
+    setIsSaving(true);
+    (async () => {
       try {
-        await fetch('/api/schedule', {
+        try {
+          await fetch('/api/schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dateKey, person, fullSchedule: newSchedule }),
+          });
+        } catch {
+          // Ignore if static
+        }
+
+        await fetch(NPOINT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dateKey, person }),
+          body: JSON.stringify(newSchedule),
         });
-      } catch {
-        // Ignore static host
+      } catch (err) {
+        console.error('Save error:', err);
+      } finally {
+        setIsSaving(false);
       }
-
-      // Always update global npoint store so all devices (phones, computers) sync instantly
-      await fetch(NPOINT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newSchedule),
-      });
-    } catch (err) {
-      console.error('Save error:', err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    })();
+  }, []);
 
   const handleSelect = useCallback(
     (date: Date, person: string) => {
@@ -220,7 +235,7 @@ export function App() {
       const key = `${year}-${month}-${day}`;
       saveData(key, person);
     },
-    [schedule]
+    [saveData]
   );
 
   const changeMonth = (offset: number) => {
