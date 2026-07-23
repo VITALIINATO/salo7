@@ -4,6 +4,14 @@ const LOCAL_STORAGE_KEY = 'schedule_data';
 const NAMES = ['БЄЛІК', 'МО', 'НАТО'];
 const NPOINT_URL = 'https://api.npoint.io/a2c459559145e6cd5082';
 
+// Check if running on GitHub Pages or static host without backend API
+const IS_STATIC_HOST = typeof window !== 'undefined' && (
+  window.location.hostname.includes('github.io') ||
+  window.location.hostname.includes('github.com') ||
+  window.location.hostname.includes('netlify.app') ||
+  window.location.hostname.includes('vercel.app')
+);
+
 export function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [schedule, setSchedule] = useState<Record<string, string>>(() => {
@@ -27,13 +35,16 @@ export function App() {
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [error] = useState<string | null>(null);
 
+  // Track if /api endpoints exist to avoid repeating 404 requests
+  const hasServerApiRef = useRef(!IS_STATIC_HOST);
+
   // Keep a ref of schedule so callbacks always see freshest state
   const scheduleRef = useRef<Record<string, string>>(schedule);
   useEffect(() => {
     scheduleRef.current = schedule;
   }, [schedule]);
 
-  // Track recent local edits so background 3s polling doesn't overwrite pending selections
+  // Track recent local edits so background polling doesn't overwrite pending selections
   const pendingEditsRef = useRef<Record<string, { person: string; timestamp: number }>>({});
 
   const today = useMemo(() => {
@@ -42,57 +53,71 @@ export function App() {
     return d;
   }, []);
 
-  // Merge pending edits over fetched remote schedule
+  // Merge pending edits over fetched remote schedule safely
   const mergeScheduleWithPending = useCallback((remoteSchedule: Record<string, string>) => {
     const now = Date.now();
     const merged = { ...remoteSchedule };
     
     Object.entries(pendingEditsRef.current).forEach(([key, edit]) => {
-      // Keep optimistic edit active for 30s to prevent stale server/CDN responses from overwriting local choices
-      if (now - edit.timestamp < 30000) {
-        if (edit.person) {
-          merged[key] = edit.person;
-        } else {
-          delete merged[key];
-        }
-      } else {
+      // If remote already reflects the exact local choice, we consider it confirmed
+      if (remoteSchedule[key] === edit.person) {
         delete pendingEditsRef.current[key];
+      } else {
+        // Keep pending local choice for up to 2 minutes if remote hasn't updated yet
+        if (now - edit.timestamp < 120000) {
+          if (edit.person) {
+            merged[key] = edit.person;
+          } else {
+            delete merged[key];
+          }
+        } else {
+          delete pendingEditsRef.current[key];
+        }
       }
     });
 
     return merged;
   }, []);
 
-  // Fetch function with direct cache-busting to ensure cross-device synchronization
+  // Fetch function with cache-busting to ensure cross-device synchronization
   const fetchSchedule = useCallback(async (isManual = false) => {
     if (isManual) setIsLoading(true);
     let success = false;
 
-    // 1. Try local Express API if available
-    try {
-      const res = await fetch('/api/schedule', { cache: 'no-store' });
-      if (res.ok) {
-        const contentType = res.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const data = await res.json();
-          if (data && data.schedule) {
-            const merged = mergeScheduleWithPending(data.schedule);
-            setSchedule(merged);
-            setLastUpdated(data.lastUpdated || new Date().toISOString());
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
-            success = true;
+    // 1. Try local Express API if on fullstack host
+    if (hasServerApiRef.current) {
+      try {
+        const res = await fetch('/api/schedule', { cache: 'no-store' });
+        if (res.ok) {
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await res.json();
+            if (data && data.schedule) {
+              const merged = mergeScheduleWithPending(data.schedule);
+              setSchedule(merged);
+              setLastUpdated(data.lastUpdated || new Date().toISOString());
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+              success = true;
+            }
+          } else {
+            hasServerApiRef.current = false;
           }
+        } else {
+          hasServerApiRef.current = false;
         }
+      } catch {
+        hasServerApiRef.current = false;
       }
-    } catch {
-      // Ignore static host 404
     }
 
-    // 2. Direct cloud fetch with timestamp parameter to bypass Cloudflare CDN cache
+    // 2. Direct cloud fetch with timestamp parameter to bypass CDN cache
     if (!success) {
       try {
         const cacheBusterUrl = `${NPOINT_URL}?_t=${Date.now()}`;
-        const res = await fetch(cacheBusterUrl, { cache: 'no-store' });
+        const res = await fetch(cacheBusterUrl, { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+        });
         if (res.ok) {
           const data = await res.json();
           if (data && typeof data === 'object') {
@@ -111,40 +136,45 @@ export function App() {
     setIsLoading(false);
   }, [mergeScheduleWithPending]);
 
-  // Set up SSE for real-time synchronization + polling fallback
+  // Set up synchronization + polling fallback
   useEffect(() => {
     fetchSchedule();
 
-    // 1. SSE for immediate real-time sync when on fullstack server
+    // 1. SSE for immediate real-time sync ONLY when on fullstack server
     let eventSource: EventSource | null = null;
-    try {
-      eventSource = new EventSource('/api/schedule/stream');
+    if (hasServerApiRef.current) {
+      try {
+        eventSource = new EventSource('/api/schedule/stream');
 
-      eventSource.onopen = () => {
-        setIsLiveConnected(true);
-      };
+        eventSource.onopen = () => {
+          setIsLiveConnected(true);
+        };
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.schedule) {
-            const merged = mergeScheduleWithPending(data.schedule);
-            setSchedule(merged);
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.schedule) {
+              const merged = mergeScheduleWithPending(data.schedule);
+              setSchedule(merged);
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+            }
+            if (data.lastUpdated) {
+              setLastUpdated(data.lastUpdated);
+            }
+          } catch (e) {
+            console.error('SSE parse error:', e);
           }
-          if (data.lastUpdated) {
-            setLastUpdated(data.lastUpdated);
-          }
-        } catch (e) {
-          console.error('SSE parse error:', e);
-        }
-      };
+        };
 
-      eventSource.onerror = () => {
+        eventSource.onerror = () => {
+          setIsLiveConnected(false);
+          hasServerApiRef.current = false;
+          if (eventSource) eventSource.close();
+        };
+      } catch {
         setIsLiveConnected(false);
-      };
-    } catch (e) {
-      setIsLiveConnected(false);
+        hasServerApiRef.current = false;
+      }
     }
 
     // 2. Interval polling every 3 seconds for cross-device updates
@@ -204,14 +234,17 @@ export function App() {
     setIsSaving(true);
     (async () => {
       try {
-        try {
-          await fetch('/api/schedule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dateKey, person, fullSchedule: newSchedule }),
-          });
-        } catch {
-          // Ignore if static
+        if (hasServerApiRef.current) {
+          try {
+            const res = await fetch('/api/schedule', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dateKey, person, fullSchedule: newSchedule }),
+            });
+            if (!res.ok) hasServerApiRef.current = false;
+          } catch {
+            hasServerApiRef.current = false;
+          }
         }
 
         await fetch(NPOINT_URL, {
