@@ -306,9 +306,28 @@ export function App() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-1.5 sm:p-4">
+      {/* Pure text title "Сало-7" on background above the container without box or contour */}
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-amber-300 uppercase tracking-widest text-center mb-4 sm:mb-6 drop-shadow-md">
+        Сало-7
+      </h1>
+
       <div className="w-full max-w-4xl bg-[#20291d]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-[#3b4934] p-3 sm:p-6 relative text-stone-100">
-        {/* Main Title Header: Сало-7 */}
-        <div className="flex items-center justify-between bg-[#141b12]/90 border border-[#36452f] rounded-xl py-2.5 px-3 sm:px-5 shadow-inner mb-10 sm:mb-16">
+        {error && (
+          <div className="mb-4 p-3 bg-red-950/80 border border-red-800 rounded-lg text-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
+        <header className="flex items-center justify-between mb-4 sm:mb-6 px-1">
+          <button
+            type="button"
+            onClick={() => changeMonth(-1)}
+            className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
+            title="Попередній місяць"
+          >
+            ←
+          </button>
+
           <div className="flex items-center gap-2">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
@@ -316,46 +335,29 @@ export function App() {
               }`}
               title={isLiveConnected ? 'Синхронізація активна' : 'Авто-оновлення'}
             />
+            <h2 className="text-base sm:text-xl font-extrabold text-amber-300 uppercase tracking-wider">
+              {currentDate.toLocaleString('uk-UA', { month: 'long' })} {currentDate.getFullYear()}
+            </h2>
           </div>
 
-          <h1 className="text-lg sm:text-xl md:text-2xl font-black text-amber-300 uppercase tracking-widest text-center">
-            Сало-7
-          </h1>
-
-          <button
-            type="button"
-            onClick={() => fetchSchedule(true)}
-            className="p-1.5 text-amber-400 hover:text-amber-200 hover:bg-[#2e3b28] rounded-lg transition-colors"
-            title="Оновити вручну"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-950/80 border border-red-800 rounded-lg text-red-200 text-sm">
-            {error}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => fetchSchedule(true)}
+              className="p-1.5 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 border border-[#44553b] transition-all"
+              title="Оновити вручную"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              type="button"
+              onClick={() => changeMonth(1)}
+              className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
+              title="Наступний місяць"
+            >
+              →
+            </button>
           </div>
-        )}
-
-        <header className="flex items-center justify-between mb-3 sm:mb-4 px-1">
-          <button
-            type="button"
-            onClick={() => changeMonth(-1)}
-            className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
-          >
-            ←
-          </button>
-          <h2 className="text-base sm:text-xl font-extrabold text-amber-300 uppercase tracking-wider">
-            {currentDate.toLocaleString('uk-UA', { month: 'long' })} {currentDate.getFullYear()}
-          </h2>
-          <button
-            type="button"
-            onClick={() => changeMonth(1)}
-            className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
-          >
-            →
-          </button>
         </header>
 
         <div className="calendar-grid text-[11px] sm:text-sm text-center font-bold text-amber-400/90 tracking-wide uppercase mb-1.5">
