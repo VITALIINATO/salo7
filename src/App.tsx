@@ -373,7 +373,7 @@ export function App() {
 
       {/* Upper area: "Сало-7" is centered vertically between the top of the page and top of calendar */}
       <div className="flex-1 min-h-[60px] flex items-center justify-center py-2">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-emerald-900 uppercase tracking-widest text-center drop-shadow-xs">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-emerald-950 uppercase tracking-widest text-center drop-shadow-xs">
           Сало-7
         </h1>
       </div>
@@ -390,7 +390,7 @@ export function App() {
           <button
             type="button"
             onClick={() => changeMonth(-1)}
-            className="p-1.5 sm:p-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 active:scale-95 text-amber-300 font-bold border border-emerald-700 shadow-xs transition-all"
+            className="p-1.5 sm:p-2 sm:px-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-950 font-black border border-emerald-300/80 shadow-xs transition-all"
             title="Попередній місяць"
           >
             ←
@@ -411,7 +411,7 @@ export function App() {
           <button
             type="button"
             onClick={() => changeMonth(1)}
-            className="p-1.5 sm:p-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 active:scale-95 text-amber-300 font-bold border border-emerald-700 shadow-xs transition-all"
+            className="p-1.5 sm:p-2 sm:px-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-950 font-black border border-emerald-300/80 shadow-xs transition-all"
             title="Наступний місяць"
           >
             →
