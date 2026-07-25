@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import saloBgImage from './assets/images/salo_7_bg_1784993340426.jpg';
 
 const LOCAL_STORAGE_KEY = 'schedule_data';
 const NAMES = ['БЄЛІК', 'МО', 'НАТО'];
@@ -352,7 +353,24 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center max-w-4xl mx-auto p-1.5 sm:p-4">
+    <div className="min-h-screen flex flex-col items-center max-w-4xl mx-auto p-1.5 sm:p-4 relative">
+      {/* 1:1 Background image spanning from top of page to bottom of calendar with soft blurred semi-transparent edges */}
+      <div className="absolute top-0 inset-x-0 bottom-[16px] pointer-events-none -z-10 flex items-center justify-center overflow-hidden">
+        <div className="relative w-full max-w-[500px] aspect-square flex items-center justify-center p-2">
+          <img
+            src={saloBgImage}
+            alt="Сало-7 логотип"
+            referrerPolicy="no-referrer"
+            className="w-full h-full object-cover rounded-3xl opacity-60 mix-blend-multiply transition-opacity duration-300"
+            style={{
+              maskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0.6) 55%, rgba(0,0,0,0) 72%)',
+              WebkitMaskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0.6) 55%, rgba(0,0,0,0) 72%)',
+              filter: 'blur(0.5px)'
+            }}
+          />
+        </div>
+      </div>
+
       {/* Upper area: "Сало-7" is centered vertically between the top of the page and top of calendar */}
       <div className="flex-1 min-h-[60px] flex items-center justify-center py-2">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-emerald-900 uppercase tracking-widest text-center drop-shadow-xs">
