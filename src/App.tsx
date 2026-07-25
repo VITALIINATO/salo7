@@ -421,7 +421,7 @@ export function App() {
                 className={`min-h-[60px] sm:min-h-[76px] sm:aspect-square flex flex-col justify-between items-center p-0.5 sm:p-1.5 border rounded-xl transition-all ${
                   current
                     ? person
-                      ? 'bg-gradient-to-b from-emerald-600 to-emerald-700 border-emerald-500 shadow-xs text-amber-200'
+                      ? 'bg-gradient-to-b from-[#c8dacb] to-[#b8ceba] border-[#a0be9e] shadow-xs text-emerald-950'
                       : 'bg-emerald-50/70 border-slate-200/80 hover:bg-emerald-100/80 hover:border-emerald-300 text-slate-800'
                     : 'bg-slate-100/50 text-slate-400 border-transparent'
                 }`}
@@ -429,7 +429,7 @@ export function App() {
                 <div className="flex flex-col items-center">
                   <time
                     className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-base font-semibold ${
-                      current ? (person ? 'text-stone-100' : 'text-slate-700') : 'text-slate-400'
+                      current ? (person ? 'text-emerald-950' : 'text-slate-700') : 'text-slate-400'
                     } ${
                       isToday
                         ? 'bg-amber-400 text-slate-950 font-black border border-amber-500 shadow-xs'
@@ -442,10 +442,10 @@ export function App() {
                   {current && person && (
                     <div className="mt-0.5">
                       {(isPast || isToday) && (
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-300 rounded-full" title="Минула/поточна дата" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-700 rounded-full" title="Минула/поточна дата" />
                       )}
                       {!isPast && !isToday && (
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-300 rounded-full" title="Майбутня дата" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-600 rounded-full" title="Майбутня дата" />
                       )}
                     </div>
                   )}
@@ -457,7 +457,7 @@ export function App() {
                       value={person || ''}
                       onChange={(e) => handleSelect(date, e.target.value)}
                       className={`w-full text-[10px] xs:text-[11px] sm:text-xs md:text-sm leading-tight bg-transparent focus:outline-none text-center cursor-pointer font-black tracking-tight py-0.5 px-0 ${
-                        person ? 'text-amber-300' : 'text-slate-400 hover:text-slate-700 font-medium'
+                        person ? 'text-emerald-950' : 'text-slate-400 hover:text-slate-700 font-medium'
                       }`}
                     >
                       <option value="" className="bg-white text-slate-500 font-normal">
