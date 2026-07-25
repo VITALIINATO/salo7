@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 body {
-  background: linear-gradient(135deg, #151d13 0%, #293524 35%, #3c4b35 70%, #172115 100%);
+  background: linear-gradient(135deg, #ebf3ea 0%, #dbe8da 40%, #c9dcc7 100%);
   background-attachment: fixed;
   min-height: 100vh;
   margin: 0;
-  color: #f1f5f9;
+  color: #1e293b;
 }
 
 .calendar-grid {
@@ -20,8 +20,8 @@ body {
 }
 
 .loader {
-  border: 4px solid rgba(245, 158, 11, 0.25);
-  border-left-color: #f59e0b;
+  border: 4px solid rgba(16, 185, 129, 0.25);
+  border-left-color: #059669;
   border-radius: 50%;
   width: 40px;
   height: 40px;

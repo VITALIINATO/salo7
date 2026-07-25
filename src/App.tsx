@@ -346,7 +346,7 @@ export function App() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="loader" />
-        <div className="mt-4 text-lg font-bold text-amber-400 drop-shadow">Завантаження...</div>
+        <div className="mt-4 text-lg font-bold text-emerald-800 drop-shadow-xs">Завантаження...</div>
       </div>
     );
   }
@@ -355,15 +355,15 @@ export function App() {
     <div className="min-h-screen flex flex-col items-center max-w-4xl mx-auto p-1.5 sm:p-4">
       {/* Upper area: "Сало-7" is centered vertically between the top of the page and top of calendar */}
       <div className="flex-1 min-h-[60px] flex items-center justify-center py-2">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-amber-300 uppercase tracking-widest text-center drop-shadow-md">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-emerald-900 uppercase tracking-widest text-center drop-shadow-xs">
           Сало-7
         </h1>
       </div>
 
       {/* Main calendar card centered vertically on the page */}
-      <div className="w-full bg-[#20291d]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-[#3b4934] p-3 sm:p-6 relative text-stone-100">
+      <div className="w-full bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-emerald-900/15 p-3 sm:p-6 relative text-slate-800">
         {error && (
-          <div className="mb-4 p-3 bg-red-950/80 border border-red-800 rounded-lg text-red-200 text-sm">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
             {error}
           </div>
         )}
@@ -372,7 +372,7 @@ export function App() {
           <button
             type="button"
             onClick={() => changeMonth(-1)}
-            className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
+            className="p-1.5 sm:p-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 active:scale-95 text-amber-300 font-bold border border-emerald-700 shadow-xs transition-all"
             title="Попередній місяць"
           >
             ←
@@ -381,11 +381,11 @@ export function App() {
           <div className="flex items-center gap-2">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
-                isLiveConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                isLiveConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
               }`}
               title={isLiveConnected ? 'Синхронізація активна' : 'Авто-оновлення'}
             />
-            <h2 className="text-base sm:text-xl font-extrabold text-amber-300 uppercase tracking-wider">
+            <h2 className="text-base sm:text-xl font-extrabold text-emerald-950 uppercase tracking-wider">
               {currentDate.toLocaleString('uk-UA', { month: 'long' })} {currentDate.getFullYear()}
             </h2>
           </div>
@@ -393,14 +393,14 @@ export function App() {
           <button
             type="button"
             onClick={() => changeMonth(1)}
-            className="p-1.5 sm:p-2 rounded-xl bg-[#2e3b28] hover:bg-[#3d4e35] text-amber-300 font-bold border border-[#44553b] transition-all"
+            className="p-1.5 sm:p-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 active:scale-95 text-amber-300 font-bold border border-emerald-700 shadow-xs transition-all"
             title="Наступний місяць"
           >
             →
           </button>
         </header>
 
-        <div className="calendar-grid text-[11px] sm:text-sm text-center font-bold text-amber-400/90 tracking-wide uppercase mb-1.5">
+        <div className="calendar-grid text-[11px] sm:text-sm text-center font-bold text-emerald-800 tracking-wide uppercase mb-1.5">
           {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map((d) => (
             <div key={d}>{d}</div>
           ))}
@@ -418,21 +418,21 @@ export function App() {
             return (
               <div
                 key={key}
-                className={`min-h-[60px] sm:min-h-[76px] sm:aspect-square flex flex-col justify-between items-center p-0.5 sm:p-1.5 border rounded-lg transition-all ${
+                className={`min-h-[60px] sm:min-h-[76px] sm:aspect-square flex flex-col justify-between items-center p-0.5 sm:p-1.5 border rounded-xl transition-all ${
                   current
                     ? person
-                      ? 'bg-gradient-to-b from-[#3a4732] to-[#2b3525] border-[#55674a] shadow-xs text-amber-200'
-                      : 'bg-[#1b2218]/90 border-[#2f3c29] hover:bg-[#253120]'
-                    : 'bg-[#121810]/40 text-stone-600 border-transparent'
+                      ? 'bg-gradient-to-b from-emerald-600 to-emerald-700 border-emerald-500 shadow-xs text-amber-200'
+                      : 'bg-emerald-50/70 border-slate-200/80 hover:bg-emerald-100/80 hover:border-emerald-300 text-slate-800'
+                    : 'bg-slate-100/50 text-slate-400 border-transparent'
                 }`}
               >
                 <div className="flex flex-col items-center">
                   <time
-                    className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-base font-medium ${
-                      current ? 'text-stone-200' : 'text-stone-600'
+                    className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-base font-semibold ${
+                      current ? (person ? 'text-stone-100' : 'text-slate-700') : 'text-slate-400'
                     } ${
                       isToday
-                        ? ' bg-amber-500 text-stone-950 font-black border border-amber-300 shadow-md'
+                        ? 'bg-amber-400 text-slate-950 font-black border border-amber-500 shadow-xs'
                         : ''
                     }`}
                   >
@@ -442,10 +442,10 @@ export function App() {
                   {current && person && (
                     <div className="mt-0.5">
                       {(isPast || isToday) && (
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-400 rounded-full" title="Минула/поточна дата" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-300 rounded-full" title="Минула/поточна дата" />
                       )}
                       {!isPast && !isToday && (
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full" title="Майбутня дата" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-300 rounded-full" title="Майбутня дата" />
                       )}
                     </div>
                   )}
@@ -457,14 +457,14 @@ export function App() {
                       value={person || ''}
                       onChange={(e) => handleSelect(date, e.target.value)}
                       className={`w-full text-[10px] xs:text-[11px] sm:text-xs md:text-sm leading-tight bg-transparent focus:outline-none text-center cursor-pointer font-black tracking-tight py-0.5 px-0 ${
-                        person ? 'text-amber-300' : 'text-stone-500 font-normal'
+                        person ? 'text-amber-300' : 'text-slate-400 hover:text-slate-700 font-medium'
                       }`}
                     >
-                      <option value="" className="bg-[#182015] text-stone-500 font-normal">
+                      <option value="" className="bg-white text-slate-500 font-normal">
                         —
                       </option>
                       {NAMES.map((name) => (
-                        <option key={name} value={name} className="bg-[#182015] text-amber-300 font-bold">
+                        <option key={name} value={name} className="bg-white text-slate-900 font-bold">
                           {name}
                         </option>
                       ))}
@@ -477,8 +477,8 @@ export function App() {
         </div>
 
         {isSaving && (
-          <div className="absolute bottom-4 right-4 text-xs text-amber-300 font-bold animate-pulse bg-[#161f14] px-3 py-1 rounded-full shadow-lg border border-[#3c4c35] flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />
+          <div className="absolute bottom-4 right-4 text-xs text-emerald-900 font-bold animate-pulse bg-emerald-100 px-3 py-1 rounded-full shadow-md border border-emerald-300 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-ping" />
             Збереження...
           </div>
         )}
