@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import saloBgImage from './assets/images/salo_7_bg_1784993340426.jpg';
 
 const LOCAL_STORAGE_KEY = 'schedule_data';
-const NAMES = ['БЄЛІК', 'МО', 'НАТО'];
+const NAMES = ['БЄЛІК', 'МО', 'Хич'];
 const NPOINT_URL = 'https://api.npoint.io/a2c459559145e6cd5082';
 
 // Check if running on GitHub Pages or static host without backend API
